@@ -162,18 +162,27 @@ class GstAudioFile(object):
         >>>     for block in f:
         >>>         do_something(block)
 
-    Iterating the object yields blocks of 16-bit PCM data. Three
+    Iterating the object yields blocks of PCM audio data. Three
     pieces of stream information are also available: samplerate (in Hz),
     number of channels, and duration (in seconds).
+
+    The optional 'format' argument specifies the audio sample format,
+    and is 'S16LE' (signed 16-bit little-endian) by default. Most
+    GStreamer audio formats are supported. If the format doesn't end in
+    'LE' or 'BE' to specify endianness, native endianness is used.
 
     It's very important that the client call close() when it's done
     with the object. Otherwise, the program is likely to hang on exit.
     Alternatively, of course, one can just use the file as a context
     manager, as shown above.
     """
-    def __init__(self, path):
+    def __init__(self, path, format='S16LE'):
         self.running = False
         self.finished = False
+
+        # If format string doesn't specify endianness, make it native endian
+        if format[-2:] not in ('LE', 'BE'):
+            format += 'LE' if sys.byteorder == 'little' else 'BE'
 
         # Set up the Gstreamer pipeline.
         self.pipeline = Gst.Pipeline()
@@ -206,7 +215,7 @@ class GstAudioFile(object):
         # We want short integer data.
         self.sink.set_property(
             'caps',
-            Gst.Caps.from_string('audio/x-raw, format=(string)S16LE'),
+            Gst.Caps.from_string('audio/x-raw, format=(string)' + format),
         )
         # TODO set endianness?
         # Set up the characteristics of the output. We don't want to
